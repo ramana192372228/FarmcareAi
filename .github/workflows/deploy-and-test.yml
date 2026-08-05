@@ -8,66 +8,58 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
-env:
-  BASE_URL: https://ramana192372228.github.io/FarmcareAi/
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  build-deploy-and-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Stage 1: Checkout Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Stage 2: Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Stage 3: Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: Stage 4: Install Flutter Dependencies & Build Web App
+      - name: Install Flutter Dependencies and Build Web App
         run: |
           flutter pub get
           flutter build web --release --base-href "/FarmcareAi/"
 
-      - name: Stage 5: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
+          path: build/web
 
-      - name: Stage 6: Wait for Deployment & Verify Availability
-        run: |
-          echo "Waiting 30 seconds for GitHub Pages deployment propagation..."
-          sleep 30
-          HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$BASE_URL" || echo "000")
-          echo "Deployment Verification Status Code: $HTTP_STATUS"
-          if [ "$HTTP_STATUS" -ne 200 ]; then
-            echo "::warning ::Deployment returned status $HTTP_STATUS, continuing E2E suite validation against configured BASE_URL"
-          fi
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
-      - name: Stage 7: Install Selenium Automation Dependencies
+      - name: Install Selenium Automation Dependencies
         run: |
           cd selenium-automation
           npm install
 
-      - name: Stage 8: Execute Selenium E2E Tests against Live Application
+      - name: Run Live Selenium E2E Tests
+        env:
+          BASE_URL: https://ramana192372228.github.io/FarmcareAi/
         run: |
           cd selenium-automation
           npm test
 
-      - name: Stage 9 & 10: Generate Reports
-        run: |
-          echo "Reports generated automatically during Selenium E2E execution."
-
-      - name: Stage 11: Upload Test Evidence Artifacts
+      - name: Upload Test Results Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -79,7 +71,7 @@ jobs:
             Test Results/Summary/
           retention-days: 30
 
-      - name: Stage 12 & 13: Publish Summary & Store Results
+      - name: Publish Summary
         if: always()
         run: |
           if [ -f "Test Results/Summary/summary.md" ]; then

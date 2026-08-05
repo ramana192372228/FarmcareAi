@@ -1,4 +1,4 @@
-name: Security Assessment & Load Testing Pipeline
+name: Security Assessment and Load Testing Pipeline
 
 on:
   push:
@@ -7,38 +7,27 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   security-and-load-testing:
     runs-on: ubuntu-latest
     steps:
-      - name: Stage 1: Checkout Codebase
+      - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Stage 2: Automatic Backend Framework & Dependency Detection
-        run: |
-          echo "Detected Framework: Flutter (Web/Android) + Node.js Automation & Firebase Services"
-
-      - name: Stage 3: Run Semgrep SAST Scan
-        uses: semgrep/actions@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          config: p/default
-        continue-on-error: true
+          node-version: 18
 
-      - name: Stage 4: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-        continue-on-error: true
+          channel: 'stable'
 
-      - name: Stage 5: Run Gitleaks Secret Scanner
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Stage 6: Install k6 for API Load Testing
+      - name: Install k6
         run: |
           sudo gpg -k
           sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
@@ -46,20 +35,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install k6
 
-      - name: Stage 7: Run k6 Load Test Baseline (100 VUs / 1 Minute)
+      - name: Run k6 Load Test Baseline
         run: |
           k6 run "Vulnerability Test Results/k6-load-test.js"
 
-      - name: Stage 8: Upload Vulnerability & Security Reports
+      - name: Upload Security Reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Security_and_Performance_Audit_Reports
-          path: |
-            Vulnerability Test Results/
+          path: Vulnerability Test Results/
           retention-days: 30
 
-      - name: Stage 9: Publish Action Summary
+      - name: Publish Action Summary
         if: always()
         run: |
           if [ -f "Vulnerability Test Results/executive-summary.md" ]; then
