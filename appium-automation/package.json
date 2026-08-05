@@ -1,0 +1,14 @@
+{
+  "name": "farmcare-ai-appium-automation",
+  "version": "1.0.0",
+  "description": "Appium Mobile E2E Automation Framework for FarmCare AI Android App",
+  "main": "tests/android_suite.js",
+  "scripts": {
+    "test": "node tests/android_suite.js"
+  },
+  "dependencies": {
+    "appium": "^2.5.1",
+    "exceljs": "^4.4.0",
+    "webdriverio": "^8.32.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "farmcare-ai-selenium-automation",
+  "version": "1.0.0",
+  "description": "Selenium E2E Automation Framework for FarmCare AI Live Web Application",
+  "main": "tests/web_suite.js",
+  "scripts": {
+    "test": "node tests/web_suite.js"
+  },
+  "dependencies": {
+    "chromedriver": "^120.0.0",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "selenium-webdriver": "^4.17.0"
+  }
+}

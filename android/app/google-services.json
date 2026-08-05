@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "788933995877",
+    "project_id": "farmcare-ai-82e05",
+    "storage_bucket": "farmcare-ai-82e05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788933995877:android:859629c7a2253309d2c58c",
+        "android_client_info": {
+          "package_name": "com.example.farmcare_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7K4MxsWU0otjdP-WN1og8pGzcoNnxKNg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

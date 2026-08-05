@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper check: verify if the client request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper lookup: fetch user profile from the 'users' collection
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Owner verification: check if authenticated Google email matches the profile
+    function isUserOwner(userId) {
+      return isAuthenticated() && (
+        request.auth.token.email == getUserData(userId).email
+      );
+    }
+
+    // Admin authorization: checks if admin email is signed in or holds admin role
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'admin@farmcare.ai' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isUserOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // 2. My Farm Collection
+    match /my_farm/{userId} {
+      allow read, write: if isUserOwner(userId);
+    }
+
+    // 3. Community Posts Collection
+    match /community_posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.userId);
+      allow update, delete: if isAuthenticated() && isUserOwner(resource.data.userId);
+
+      // Replies Sub-collection
+      match /replies/{replyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isUserOwner(request.resource.data.userId);
+        allow update, delete: if isAuthenticated() && isUserOwner(resource.data.userId);
+      }
+    }
+
+    // 4. Notifications Collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == 'ALL' || 
+        isUserOwner(resource.data.userId) ||
+        isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    // 5. Scan History Collection
+    match /scan_history/{scanId} {
+      allow read: if isAuthenticated() && (isUserOwner(resource.data.userId) || isAdmin());
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && (isUserOwner(resource.data.userId) || isAdmin());
+    }
+
+    // 6. Products Collection
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.shopId) && getUserData(request.resource.data.shopId).role == 'shop';
+      allow update, delete: if isAuthenticated() && isUserOwner(resource.data.shopId);
+    }
+
+    // 7. Carts Collection
+    match /carts/{userId} {
+      allow read, write: if isUserOwner(userId);
+    }
+
+    // 8. Orders Collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (
+        isUserOwner(resource.data.farmerId) || 
+        isUserOwner(resource.data.shopId) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.farmerId);
+      allow update: if isAuthenticated() && (
+        isUserOwner(resource.data.farmerId) || 
+        isUserOwner(resource.data.shopId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 9. Crop Offers Collection
+    match /crop_offers/{offerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.farmerId);
+      allow update: if isAuthenticated() && (
+        isUserOwner(resource.data.farmerId) || 
+        isUserOwner(resource.data.acceptedBy) ||
+        (request.resource.data.acceptedBy != null && isUserOwner(request.resource.data.acceptedBy)) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 10. Purchases Collection
+    match /purchases/{purchaseId} {
+      allow read: if isAuthenticated() && (
+        isUserOwner(resource.data.farmerId) || 
+        isUserOwner(resource.data.shopId) ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.shopId) && getUserData(request.resource.data.shopId).role == 'shop';
+      allow update, delete: if isAdmin();
+    }
+
+    // 11. Soil Reports Collection
+    match /soil_reports/{reportId} {
+      allow read: if isAuthenticated() && isUserOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isUserOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && isUserOwner(resource.data.userId);
+    }
+  }
+}

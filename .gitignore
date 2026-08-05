@@ -1,0 +1,40 @@
+# Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+
+# Android
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+
+# iOS/macOS
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Generated reports
+Test Results/
+Vulnerability Test Results/*.xlsx
+Vulnerability Test Results/*.html
+Vulnerability Test Results/*.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Windows
+Thumbs.db
+Desktop.ini
