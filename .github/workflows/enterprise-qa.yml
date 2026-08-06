@@ -52,6 +52,7 @@ jobs:
             Test Results/JSON/firebase-validation.json
             build/web/
             build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: ignore
 
   # JOB 2: Deployment Status
   deployment-status:
@@ -78,6 +79,7 @@ jobs:
         with:
           name: Flutter_Web_Build
           path: build/web
+          if-no-files-found: ignore
       - name: Verify Live Deployment Status
         run: |
           python3 scripts/verify_deployment.py
@@ -87,6 +89,7 @@ jobs:
         with:
           name: Deployment_Status_Artifacts
           path: Test Results/JSON/deployment-status.json
+          if-no-files-found: ignore
 
   # JOB 3: Selenium Website Tests
   selenium-tests:
@@ -117,6 +120,7 @@ jobs:
             Test Results/Summary/
             Test Results/Screenshots/
             Test Results/Logs/
+          if-no-files-found: ignore
 
   # JOB 4: Android Appium Tests
   appium-tests:
@@ -152,6 +156,7 @@ jobs:
             Test Results/Summary/
             Test Results/Screenshots/
             Test Results/Logs/
+          if-no-files-found: ignore
 
   # JOB 5: Firebase Validation
   firebase-validation:
@@ -173,6 +178,7 @@ jobs:
         with:
           name: Firebase_Validation_Reports
           path: Test Results/JSON/firebase-validation.json
+          if-no-files-found: ignore
 
   # JOB 6: Security Scan
   security-scan:
@@ -194,10 +200,11 @@ jobs:
         with:
           name: Security_Scan_Reports
           path: |
-            Test Results/HTML/Security_Report.html
-            Test Results/Summary/Security_Report.md
-            Test Results/Excel/findings.xlsx
-            Test Results/JSON/security-scan.json
+            Test Results/HTML/
+            Test Results/Summary/
+            Test Results/Excel/
+            Test Results/JSON/
+          if-no-files-found: ignore
 
   # JOB 7: Load Testing
   load-testing:
@@ -228,10 +235,11 @@ jobs:
         with:
           name: Performance_Load_Test_Reports
           path: |
-            Test Results/HTML/Performance_Report.html
-            Test Results/Summary/Performance_Report.md
-            Test Results/Excel/Performance_Report.xlsx
-            Test Results/JSON/Performance_Report.json
+            Test Results/HTML/
+            Test Results/Summary/
+            Test Results/Excel/
+            Test Results/JSON/
+          if-no-files-found: ignore
 
   # JOB 8: Generate Master Report
   generate-master-report:
@@ -259,6 +267,7 @@ jobs:
         with:
           name: Consolidated_Master_QA_Reports
           path: Test Results/Master_QA_Reports/
+          if-no-files-found: ignore
 
   # JOB 9: Publish Reports
   publish-reports:
@@ -319,6 +328,8 @@ jobs:
         run: |
           if [ -f "Test Results/Summary/Master_Report.md" ]; then
             cat "Test Results/Summary/Master_Report.md" >> $GITHUB_STEP_SUMMARY
+          elif [ -f "Test Results/Master_Report.md" ]; then
+            cat "Test Results/Master_Report.md" >> $GITHUB_STEP_SUMMARY
           else
             echo "# FarmCare AI Enterprise QA Pipeline Summary" >> $GITHUB_STEP_SUMMARY
             echo "Execution completed successfully across 10 jobs." >> $GITHUB_STEP_SUMMARY
