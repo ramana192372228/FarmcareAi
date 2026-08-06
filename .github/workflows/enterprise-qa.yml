@@ -41,8 +41,8 @@ jobs:
           flutter build apk --release
       - name: Validate Firebase & Firestore Rules
         run: |
-          python -m pip install openpyxl
-          python scripts/validate_firebase.py
+          python3 -m pip install openpyxl || true
+          python3 scripts/validate_firebase.py
       - name: Save Flutter Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -73,16 +73,14 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --base-href "/FarmcareAi/"
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Save Web Build Artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: Flutter_Web_Build
           path: build/web
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
       - name: Verify Live Deployment Status
         run: |
-          python scripts/verify_deployment.py
+          python3 scripts/verify_deployment.py
       - name: Save Deployment Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -167,8 +165,8 @@ jobs:
           python-version: '3.10'
       - name: Execute Firebase Security & Collection Validation
         run: |
-          python -m pip install openpyxl
-          python scripts/validate_firebase.py
+          python3 -m pip install openpyxl || true
+          python3 scripts/validate_firebase.py
       - name: Upload Firebase Validation Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -188,8 +186,8 @@ jobs:
           python-version: '3.10'
       - name: Execute Security & Compliance Scan
         run: |
-          python -m pip install openpyxl
-          python scripts/generate_security_reports.py
+          python3 -m pip install openpyxl || true
+          python3 scripts/generate_security_reports.py
       - name: Upload Security Scan Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -222,8 +220,8 @@ jobs:
         env:
           BASE_URL: https://ramana192372228.github.io/FarmcareAi/
         run: |
-          python -m pip install openpyxl
-          python scripts/run_k6_performance.py
+          python3 -m pip install openpyxl || true
+          python3 scripts/run_k6_performance.py
       - name: Upload Performance Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -253,8 +251,8 @@ jobs:
           ignore-missing-artifacts: true
       - name: Consolidate Master Enterprise Reports
         run: |
-          python -m pip install openpyxl
-          python scripts/generate_master_pipeline_reports.py
+          python3 -m pip install openpyxl || true
+          python3 scripts/generate_master_pipeline_reports.py
       - name: Upload Consolidated Master QA Reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -277,6 +275,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+      - name: Download Web App Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Flutter_Web_Build
+          path: pages_site/
+          ignore-missing-artifacts: true
       - name: Download Master Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -287,17 +291,6 @@ jobs:
         run: |
           mkdir -p pages_site/reports/history/run-${GITHUB_RUN_NUMBER}
           cp -r pages_site/reports/latest/* pages_site/reports/history/run-${GITHUB_RUN_NUMBER}/ || true
-          cat << 'EOF' > pages_site/index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta http-equiv="refresh" content="0; url=./reports/latest/Dashboard.html" />
-          </head>
-          <body>
-            <p>Redirecting to <a href="./reports/latest/Dashboard.html">Enterprise QA Dashboard</a>...</p>
-          </body>
-          </html>
-          EOF
       - name: Upload Reports Artifact
         uses: actions/upload-pages-artifact@v3
         with:
