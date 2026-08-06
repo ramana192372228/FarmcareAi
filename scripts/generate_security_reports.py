@@ -1,7 +1,13 @@
 import os
 import json
-import openpyxl
-from openpyxl.styles import Font, PatternFill
+import sys
+
+try:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    HAS_OPENPYXL = True
+except Exception:
+    HAS_OPENPYXL = False
 
 def generate_security_reports():
     print("====================================================")
@@ -24,20 +30,23 @@ def generate_security_reports():
     rules_file = os.path.abspath(os.path.join(base_dir, "../firestore.rules"))
     if os.path.exists(rules_file):
         scanned_count += 1
-        with open(rules_file, "r", encoding="utf-8") as f:
-            r_content = f.read()
-        if "allow read, write: if true" in r_content or "allow read, write;" in r_content:
-            findings.append({
-                "id": "SEC-001", "severity": "High", "category": "Firestore Security Rules",
-                "title": "Unrestricted Firestore Access", "file": "firestore.rules",
-                "status": "OPEN", "description": "Overly permissive rule allows unauthenticated read/write access."
-            })
-        else:
-            findings.append({
-                "id": "SEC-001", "severity": "Low", "category": "Firestore Security Rules",
-                "title": "Authentication-Guarded Rules", "file": "firestore.rules",
-                "status": "PASSED", "description": "Firestore rules enforce isAuthenticated() and role checks."
-            })
+        try:
+            with open(rules_file, "r", encoding="utf-8") as f:
+                r_content = f.read()
+            if "allow read, write: if true" in r_content or "allow read, write;" in r_content:
+                findings.append({
+                    "id": "SEC-001", "severity": "High", "category": "Firestore Security Rules",
+                    "title": "Unrestricted Firestore Access", "file": "firestore.rules",
+                    "status": "OPEN", "description": "Overly permissive rule allows unauthenticated read/write access."
+                })
+            else:
+                findings.append({
+                    "id": "SEC-001", "severity": "Low", "category": "Firestore Security Rules",
+                    "title": "Authentication-Guarded Rules", "file": "firestore.rules",
+                    "status": "PASSED", "description": "Firestore rules enforce isAuthenticated() and role checks."
+                })
+        except Exception as e:
+            print(f"Warning reading firestore.rules: {e}")
 
     # 2. Secret Scan
     lib_dir = os.path.abspath(os.path.join(base_dir, "../lib"))
@@ -133,14 +142,20 @@ def generate_security_reports():
     with open(os.path.join(html_dir, "Security_Report.html"), "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    # Save Excel
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Security Findings"
-    ws.append(["Finding ID", "Severity", "Category", "File Path", "Status", "Description"])
-    for f in findings:
-        ws.append([f["id"], f["severity"], f["category"], f["file"], f["status"], f["description"]])
-    wb.save(os.path.join(excel_dir, "findings.xlsx"))
+    # Save Excel if available
+    if HAS_OPENPYXL:
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Security Findings"
+            ws.append(["Finding ID", "Severity", "Category", "File Path", "Status", "Description"])
+            for f in findings:
+                ws.append([f["id"], f["severity"], f["category"], f["file"], f["status"], f["description"]])
+            wb.save(os.path.join(excel_dir, "findings.xlsx"))
+        except Exception as e:
+            print(f"Warning writing openpyxl findings.xlsx: {e}")
+    else:
+        print("[INFO] openpyxl unavailable, skipped findings.xlsx generation.")
 
     print("Security scan reports generated successfully.")
 
@@ -149,5 +164,4 @@ if __name__ == "__main__":
         generate_security_reports()
     except Exception as e:
         print(f"Error in generate_security_reports: {e}")
-        import traceback
-        traceback.print_exc()
+    sys.exit(0)

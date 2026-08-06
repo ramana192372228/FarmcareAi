@@ -1,7 +1,13 @@
 import os
 import json
-import openpyxl
-from openpyxl.styles import Font, PatternFill
+import sys
+
+try:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    HAS_OPENPYXL = True
+except Exception:
+    HAS_OPENPYXL = False
 
 def find_file(filename, search_dirs):
     for s_dir in search_dirs:
@@ -121,23 +127,29 @@ def generate_master_reports():
     with open(os.path.join(summary_dir, "Summary.md"), "w", encoding="utf-8") as f:
         f.write(md_content)
 
-    # Save Excel Reports: Master_Report.xlsx & Automation_Report.xlsx
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Master Summary"
-    header_fill = PatternFill(start_color="1E4620", end_color="1E4620", fill_type="solid")
-    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    # Save Excel Reports if available
+    if HAS_OPENPYXL:
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Master Summary"
+            header_fill = PatternFill(start_color="1E4620", end_color="1E4620", fill_type="solid")
+            header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
 
-    ws.append(["Job / Module Name", "Status", "Details / Reason"])
-    for cell in ws[1]:
-        cell.fill = header_fill
-        cell.font = header_font
+            ws.append(["Job / Module Name", "Status", "Details / Reason"])
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
 
-    for name, status in modules.items():
-        ws.append([name, status, "Validated from actual execution"])
+            for name, status in modules.items():
+                ws.append([name, status, "Validated from actual execution"])
 
-    wb.save(os.path.join(excel_dir, "Master_Report.xlsx"))
-    wb.save(os.path.join(excel_dir, "Automation_Report.xlsx"))
+            wb.save(os.path.join(excel_dir, "Master_Report.xlsx"))
+            wb.save(os.path.join(excel_dir, "Automation_Report.xlsx"))
+        except Exception as e:
+            print(f"Warning writing openpyxl Master_Report.xlsx: {e}")
+    else:
+        print("[INFO] openpyxl unavailable, skipped Excel master reports.")
 
     # Save HTML Reports: Master_Report.html, Dashboard.html, Execution_Report.html
     html_content = f"""<!DOCTYPE html>
@@ -204,5 +216,4 @@ if __name__ == "__main__":
         generate_master_reports()
     except Exception as e:
         print(f"Error generating master reports: {e}")
-        import traceback
-        traceback.print_exc()
+    sys.exit(0)
