@@ -43,8 +43,9 @@ def generate_master_reports():
     excel_dir = os.path.abspath(os.path.join(base_dir, "../Test Results/Excel"))
     json_dir = os.path.abspath(os.path.join(base_dir, "../Test Results/JSON"))
     summary_dir = os.path.abspath(os.path.join(base_dir, "../Test Results/Summary"))
+    flat_master_dir = os.path.abspath(os.path.join(base_dir, "../Test Results/Master_QA_Reports"))
 
-    for d in [html_dir, excel_dir, json_dir, summary_dir]:
+    for d in [html_dir, excel_dir, json_dir, summary_dir, flat_master_dir]:
         os.makedirs(d, exist_ok=True)
 
     flutter_data = load_json_data("firebase-validation.json", search_dirs)
@@ -101,13 +102,14 @@ def generate_master_reports():
         }
     }
 
-    # Save Master_Report.json & Execution_Report.json
-    with open(os.path.join(json_dir, "Master_Report.json"), "w", encoding="utf-8") as f:
-        json.dump(master_summary, f, indent=2)
-    with open(os.path.join(json_dir, "Execution_Report.json"), "w", encoding="utf-8") as f:
-        json.dump(master_summary, f, indent=2)
+    # Save JSON
+    for dest in [json_dir, flat_master_dir]:
+        with open(os.path.join(dest, "Master_Report.json"), "w", encoding="utf-8") as f:
+            json.dump(master_summary, f, indent=2)
+        with open(os.path.join(dest, "Execution_Report.json"), "w", encoding="utf-8") as f:
+            json.dump(master_summary, f, indent=2)
 
-    # Save Master_Report.md & Summary.md
+    # Save Markdown
     md_content = f"""# FarmCare AI Enterprise QA Pipeline Master Report
 
 - **Deployment URL**: {master_summary['deployment_url']}
@@ -122,10 +124,11 @@ def generate_master_reports():
 |---|---|---|
 {"".join([f"| {name} | **{status}** | Validated from actual execution |\n" for name, status in modules.items()])}
 """
-    with open(os.path.join(summary_dir, "Master_Report.md"), "w", encoding="utf-8") as f:
-        f.write(md_content)
-    with open(os.path.join(summary_dir, "Summary.md"), "w", encoding="utf-8") as f:
-        f.write(md_content)
+    for dest in [summary_dir, flat_master_dir]:
+        with open(os.path.join(dest, "Master_Report.md"), "w", encoding="utf-8") as f:
+            f.write(md_content)
+        with open(os.path.join(dest, "Summary.md"), "w", encoding="utf-8") as f:
+            f.write(md_content)
 
     # Save Excel Reports if available
     if HAS_OPENPYXL:
@@ -144,14 +147,15 @@ def generate_master_reports():
             for name, status in modules.items():
                 ws.append([name, status, "Validated from actual execution"])
 
-            wb.save(os.path.join(excel_dir, "Master_Report.xlsx"))
-            wb.save(os.path.join(excel_dir, "Automation_Report.xlsx"))
+            for dest in [excel_dir, flat_master_dir]:
+                wb.save(os.path.join(dest, "Master_Report.xlsx"))
+                wb.save(os.path.join(dest, "Automation_Report.xlsx"))
         except Exception as e:
             print(f"Warning writing openpyxl Master_Report.xlsx: {e}")
     else:
         print("[INFO] openpyxl unavailable, skipped Excel master reports.")
 
-    # Save HTML Reports: Master_Report.html, Dashboard.html, Execution_Report.html
+    # Save HTML Reports
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -205,9 +209,10 @@ def generate_master_reports():
 </body>
 </html>"""
 
-    for html_filename in ["Master_Report.html", "Dashboard.html", "Execution_Report.html"]:
-        with open(os.path.join(html_dir, html_filename), "w", encoding="utf-8") as f:
-            f.write(html_content)
+    for dest in [html_dir, flat_master_dir]:
+        for html_filename in ["Master_Report.html", "Dashboard.html", "Execution_Report.html"]:
+            with open(os.path.join(dest, html_filename), "w", encoding="utf-8") as f:
+                f.write(html_content)
 
     print("Master Reports generated successfully in HTML, XLSX, JSON, and MD formats.")
 

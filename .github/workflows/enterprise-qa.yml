@@ -258,11 +258,7 @@ jobs:
         if: always()
         with:
           name: Consolidated_Master_QA_Reports
-          path: |
-            Test Results/HTML/
-            Test Results/Excel/
-            Test Results/JSON/
-            Test Results/Summary/
+          path: Test Results/Master_QA_Reports/
 
   # JOB 9: Publish Reports
   publish-reports:
