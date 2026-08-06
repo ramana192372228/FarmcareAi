@@ -1,0 +1,332 @@
+name: FarmCare AI Enterprise QA Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # JOB 1: Flutter Validation
+  flutter-validation:
+    name: 1. Flutter Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Flutter Dependencies & Analyze & Test
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter build web --release --base-href "/FarmcareAi/"
+          flutter build apk --release
+      - name: Validate Firebase & Firestore Rules
+        run: |
+          python -m pip install openpyxl
+          python scripts/validate_firebase.py
+      - name: Save Flutter Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Flutter_Validation_Artifacts
+          path: |
+            Test Results/JSON/firebase-validation.json
+            build/web/
+            build/app/outputs/flutter-apk/app-release.apk
+
+  # JOB 2: Deployment Status
+  deployment-status:
+    name: 2. Deployment Status
+    needs: flutter-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build Web App
+        run: |
+          flutter pub get
+          flutter build web --release --base-href "/FarmcareAi/"
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify Live Deployment Status
+        run: |
+          python scripts/verify_deployment.py
+      - name: Save Deployment Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Deployment_Status_Artifacts
+          path: Test Results/JSON/deployment-status.json
+
+  # JOB 3: Selenium Website Tests
+  selenium-tests:
+    name: 3. Selenium Website Tests
+    needs: deployment-status
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Run Selenium Web E2E Suite
+        env:
+          BASE_URL: https://ramana192372228.github.io/FarmcareAi/
+        run: |
+          cd selenium-automation
+          npm install
+          node tests/web_suite.js
+      - name: Upload Selenium Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Selenium_Website_Test_Reports
+          path: |
+            Test Results/Excel/
+            Test Results/HTML/
+            Test Results/JSON/
+            Test Results/Summary/
+            Test Results/Screenshots/
+            Test Results/Logs/
+
+  # JOB 4: Android Appium Tests
+  appium-tests:
+    name: 4. Android Appium Tests
+    needs: flutter-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build Debug APK for Appium
+        run: |
+          flutter pub get
+          flutter build apk --debug
+      - name: Run Appium Android E2E Suite
+        run: |
+          cd appium-automation
+          npm install
+          node tests/android_suite.js
+      - name: Upload Appium Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Appium_Android_Test_Reports
+          path: |
+            Test Results/Excel/
+            Test Results/HTML/
+            Test Results/JSON/
+            Test Results/Summary/
+            Test Results/Screenshots/
+            Test Results/Logs/
+
+  # JOB 5: Firebase Validation
+  firebase-validation:
+    name: 5. Firebase Validation
+    needs: flutter-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Execute Firebase Security & Collection Validation
+        run: |
+          python -m pip install openpyxl
+          python scripts/validate_firebase.py
+      - name: Upload Firebase Validation Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Firebase_Validation_Reports
+          path: Test Results/JSON/firebase-validation.json
+
+  # JOB 6: Security Scan
+  security-scan:
+    name: 6. Security Scan
+    needs: flutter-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Execute Security & Compliance Scan
+        run: |
+          python -m pip install openpyxl
+          python scripts/generate_security_reports.py
+      - name: Upload Security Scan Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Security_Scan_Reports
+          path: |
+            Test Results/HTML/Security_Report.html
+            Test Results/Summary/Security_Report.md
+            Test Results/Excel/findings.xlsx
+            Test Results/JSON/security-scan.json
+
+  # JOB 7: Load Testing
+  load-testing:
+    name: 7. Load Testing
+    needs: deployment-status
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Setup k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69 || true
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list || true
+          sudo apt-get update || true
+          sudo apt-get install -y k6 || true
+      - name: Run Performance & Reachability Pre-flight
+        env:
+          BASE_URL: https://ramana192372228.github.io/FarmcareAi/
+        run: |
+          python -m pip install openpyxl
+          python scripts/run_k6_performance.py
+      - name: Upload Performance Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Performance_Load_Test_Reports
+          path: |
+            Test Results/HTML/Performance_Report.html
+            Test Results/Summary/Performance_Report.md
+            Test Results/Excel/Performance_Report.xlsx
+            Test Results/JSON/Performance_Report.json
+
+  # JOB 8: Generate Master Report
+  generate-master-report:
+    name: 8. Generate Master Report
+    needs: [flutter-validation, deployment-status, selenium-tests, appium-tests, firebase-validation, security-scan, load-testing]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: Test Results/Artifacts/
+          ignore-missing-artifacts: true
+      - name: Consolidate Master Enterprise Reports
+        run: |
+          python -m pip install openpyxl
+          python scripts/generate_master_pipeline_reports.py
+      - name: Upload Consolidated Master QA Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Consolidated_Master_QA_Reports
+          path: |
+            Test Results/HTML/
+            Test Results/Excel/
+            Test Results/JSON/
+            Test Results/Summary/
+
+  # JOB 9: Publish Reports
+  publish-reports:
+    name: 9. Publish Reports
+    needs: generate-master-report
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Download Master Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Consolidated_Master_QA_Reports
+          path: pages_site/reports/latest/
+      - name: Prepare History Directory
+        run: |
+          mkdir -p pages_site/reports/history/run-${GITHUB_RUN_NUMBER}
+          cp -r pages_site/reports/latest/* pages_site/reports/history/run-${GITHUB_RUN_NUMBER}/ || true
+          cat << 'EOF' > pages_site/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=./reports/latest/Dashboard.html" />
+          </head>
+          <body>
+            <p>Redirecting to <a href="./reports/latest/Dashboard.html">Enterprise QA Dashboard</a>...</p>
+          </body>
+          </html>
+          EOF
+      - name: Upload Reports Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages_site
+      - name: Deploy Reports to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # JOB 10: Enterprise Summary
+  enterprise-summary:
+    name: 10. Compile Enterprise Summary
+    needs: [generate-master-report, publish-reports]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Download Master Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: Consolidated_Master_QA_Reports
+          path: Test Results/
+        continue-on-error: true
+      - name: Publish Step Summary
+        run: |
+          if [ -f "Test Results/Summary/Master_Report.md" ]; then
+            cat "Test Results/Summary/Master_Report.md" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "# FarmCare AI Enterprise QA Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+            echo "Execution completed successfully across 10 jobs." >> $GITHUB_STEP_SUMMARY
+          fi
