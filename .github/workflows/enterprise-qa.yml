@@ -275,6 +275,9 @@ jobs:
     needs: generate-master-report
     if: always()
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -326,11 +329,4 @@ jobs:
         continue-on-error: true
       - name: Publish Step Summary
         run: |
-          if [ -f "Test Results/Summary/Master_Report.md" ]; then
-            cat "Test Results/Summary/Master_Report.md" >> $GITHUB_STEP_SUMMARY
-          elif [ -f "Test Results/Master_Report.md" ]; then
-            cat "Test Results/Master_Report.md" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "# FarmCare AI Enterprise QA Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-            echo "Execution completed successfully across 10 jobs." >> $GITHUB_STEP_SUMMARY
-          fi
+          python3 scripts/compile_enterprise_summary.py
