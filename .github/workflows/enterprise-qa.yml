@@ -285,6 +285,9 @@ jobs:
           ignore-missing-artifacts: true
       - name: Prepare History Directory
         run: |
+          if [ -d "pages_site/reports/latest/Consolidated_Master_QA_Reports" ]; then
+            cp -r pages_site/reports/latest/Consolidated_Master_QA_Reports/* pages_site/reports/latest/ || true
+          fi
           mkdir -p pages_site/reports/history/run-${GITHUB_RUN_NUMBER}
           cp -r pages_site/reports/latest/* pages_site/reports/history/run-${GITHUB_RUN_NUMBER}/ || true
       - name: Upload Reports Artifact
